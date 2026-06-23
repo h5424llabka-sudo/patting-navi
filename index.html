@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PuttNavi - リアルタイム距離推定</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>PuttNavi</h1>
+            <p class="subtitle">Real-time Putting Distance</p>
+        </header>
+
+        <main>
+            <div class="glass-panel settings-panel">
+                <h3><i class="fas fa-cog"></i> グリーンの設定</h3>
+                <div class="setting-item">
+                    <label for="green-speed">スティンプメーター (グリーンの速さ)</label>
+                    <div class="slider-container">
+                        <input type="range" id="green-speed" min="7" max="14" step="0.5" value="9.0">
+                        <span id="speed-value" class="value-display">9.0 ft</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel visual-area">
+                <div class="media-container">
+                    <video id="video-player" playsinline muted autoplay></video>
+                    <canvas id="output-canvas"></canvas>
+                    <div id="loading-overlay" class="overlay">
+                        <div class="spinner"></div>
+                        <p id="loading-text">OpenCVを読み込み中...</p>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="btn-start" class="action-btn primary">
+                        <i class="fas fa-camera"></i> カメラを起動して開始
+                    </button>
+                    <button id="btn-stop" class="action-btn danger hidden">
+                        <i class="fas fa-stop"></i> 停止
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-panel results-panel">
+                <div class="result-box primary-result">
+                    <span class="label">推定転がり距離</span>
+                    <div class="value-wrapper">
+                        <span id="res-distance" class="value">--</span>
+                        <span class="unit">m</span>
+                    </div>
+                </div>
+                <div class="secondary-results">
+                    <div class="result-box">
+                        <span class="label">初速</span>
+                        <span id="res-velocity" class="value small">-- m/s</span>
+                    </div>
+                    <div class="result-box">
+                        <span class="label">状態</span>
+                        <span id="res-status" class="value small status-badge">待機中</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" id="opencv-script"></script>
+    <script src="tracker.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
