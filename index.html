@@ -2,84 +2,227 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PuttNavi - リアルタイム距離推定</title>
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <div id="portrait-warning" class="portrait-warning">
+        <i class="fas fa-mobile-alt fa-rotate-90" style="font-size: 3rem; margin-bottom: 20px;"></i>
+        <h2>端末を横向きにしてください</h2>
+        <p>PuttNaviは横画面での使用に最適化されています</p>
+    </div>
+
     <div class="background-effects">
         <div class="glow-orb orb-1"></div>
         <div class="glow-orb orb-2"></div>
     </div>
 
-    <div class="container">
-        <header>
-            <h1>PuttNavi</h1>
-            <p class="subtitle">Real-time Putting Distance</p>
-        </header>
+    <div class="container" id="app-container">
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h3><i class="fas fa-cog"></i> 設定</h3>
+                    <button id="btn-close-settings" class="icon-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="settings-body">
 
-        <main>
-            <div class="glass-panel settings-panel">
-                <h3><i class="fas fa-cog"></i> グリーンの設定</h3>
-                <div class="setting-item">
-                    <label for="green-speed">スティンプメーター (グリーンの速さ)</label>
-                    <div class="slider-container">
-                        <input type="range" id="green-speed" min="7" max="14" step="0.5" value="9.0">
-                        <span id="speed-value" class="value-display">9.0 ft</span>
+                    <div class="setting-item">
+                        <label for="green-speed">グリーンスピード (Stimp値) &nbsp;<span id="speed-value" class="value-display">9.0 ft</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">7</span>
+                            <input type="range" id="green-speed" min="7" max="14" step="0.5" value="9.0">
+                            <span class="range-label">14</span>
+                        </div>
+                        <p class="param-desc">コースのグリーンの速さを表すスティンプメーター値(ft)。値が大きいほど速いグリーンで、同じ初速でも転がり距離が長くなります。実際のコースの値に合わせてください。</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="sensitivity">背景差分の感度 &nbsp;<span id="sensitivity-value" class="value-display">60</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">低</span>
+                            <input type="range" id="sensitivity" min="20" max="120" step="5" value="60">
+                            <span class="range-label">高</span>
+                        </div>
+                        <p class="param-desc">背景との差が何段階以上変化したピクセルを「動き」と認識するかの閾値です。草の揺れ・影で誤検知する場合は下げる、ボールが検出されにくい場合は上げてください。</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="min-ball-size">最小ボール認識サイズ &nbsp;<span id="min-ball-size-value" class="value-display">15 px</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">小</span>
+                            <input type="range" id="min-ball-size" min="5" max="40" step="1" value="15">
+                            <span class="range-label">大</span>
+                        </div>
+                        <p class="param-desc">この半径(px)より小さな変化の塊はボールとして認識しません。小さな虫や草の揺れを誤検知する場合は値を大きくしてください。カメラとボールが遠い場合は小さくしてください。</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="max-ball-size">最大ボール認識サイズ &nbsp;<span id="max-ball-size-value" class="value-display">80 px</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">小</span>
+                            <input type="range" id="max-ball-size" min="40" max="200" step="5" value="80">
+                            <span class="range-label">大</span>
+                        </div>
+                        <p class="param-desc">この半径(px)より大きな変化の塊(手・パター・大きな影)はボールと認識しません。「大きすぎます」と表示が出る場合や手をどけても検知する場合は値を大きくしてください。</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="color-tolerance">カラーマスクの許容度 &nbsp;<span id="color-tolerance-value" class="value-display">180</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">厳密</span>
+                            <input type="range" id="color-tolerance" min="50" max="300" step="10" value="180">
+                            <span class="range-label">甘い</span>
+                        </div>
+                        <p class="param-desc">ボール認識後、トラッキング中に「ボールと同じ色」のピクセルだけを追跡するための許容範囲。小さいほど厳密にボールの色のみ追うが、外れやすくなる。パターが混入する場合は小さく。</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="max-track-time">計測最大時間 (タイムアウト) &nbsp;<span id="max-track-time-value" class="value-display">1.5 s</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">0.5s</span>
+                            <input type="range" id="max-track-time" min="0.5" max="3.0" step="0.1" value="1.5">
+                            <span class="range-label">3.0s</span>
+                        </div>
+                        <p class="param-desc">パットを打ってからこの秒数が経過すると自動的に計測を終了します。強く打ってボールが画面外へ出る場合は長くしてください。短すぎるとボールが動いている最中に計算が始まります。</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="motion-multiplier">パット開始のトリガー感度 &nbsp;<span id="motion-multiplier-value" class="value-display">1.5 x</span></label>
+                        <div class="slider-container">
+                            <span class="range-label">敏感</span>
+                            <input type="range" id="motion-multiplier" min="0.5" max="4.0" step="0.1" value="1.5">
+                            <span class="range-label">鈍感</span>
+                        </div>
+                        <p class="param-desc">「ボールが何px以上動いたらパット開始」と判定するかをボール半径の倍数で指定します。影や揺れで計測が勝手に始まる場合は大きく、軽いタッチのパットで始まらない場合は小さくしてください。</p>
+                    </div>
+
+                    <div class="setting-item toggle-item">
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="ignore-shadows-toggle" style="width:20px;height:20px;flex-shrink:0;margin-top:3px;" checked>
+                            <div>
+                                <span>影を無視する</span>
+                                <p class="param-desc" style="margin-top:4px;">暗くなったピクセル(影)を変化として無視します。ボールが芝より明るい白色の場合はオンにしてください。暗い色のボールを使う場合やボールが検出されない場合はオフにしてください。</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="setting-item toggle-item">
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="debug-mode-toggle" style="width:20px;height:20px;flex-shrink:0;margin-top:3px;">
+                            <div>
+                                <span>差分映像を表示（デバッグ）</span>
+                                <p class="param-desc" style="margin-top:4px;">カメラが「何を変化として検知しているか」を画面左の小ウィンドウに表示します。白＝変化を検知、赤＝ボールと同じ色と判定、灰＝色が違うので除外。誤認識の原因調査に使ってください。</p>
+                            </div>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Modal -->
+        <div id="info-modal" class="modal hidden">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h4 style="font-size: 1.2rem; color: #3b82f6;"><i class="fas fa-info-circle"></i> 計測アルゴリズム</h4>
+                    <button id="btn-close-info" class="icon-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="settings-body" style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.6;">
+                    <p><strong>① 認識:</strong> 背景（芝）の画像を記憶し、ボールが置かれたときの「ピクセルの差分（変化）」を計算してボールの正確な位置・サイズ・色を学習します。</p>
+                    <p style="margin-top: 10px;"><strong>② トラッキング:</strong> パットされた瞬間、ボールの色と一致する変化ピクセルだけを60FPSで追いかけ、複数の位置座標を記録します。</p>
+                    <p style="margin-top: 10px;"><strong>③ 距離計算:</strong> 記録した座標と時間から「ボールの最大初速 ($V_{peak}$)」を算出します。物理公式 <span style="font-family: monospace; color: #facc15;">距離 = -(V²) / (2a)</span> に当てはめて最終到達距離を推定しています。</p>
+                </div>
+            </div>
+        </div>
+
+        <main class="main-layout">
+            <!-- Left Side: Camera & Debug -->
+            <div class="left-column">
+                <div class="glass-panel visual-area">
+                    <div class="media-container">
+                        <video id="video-player" playsinline muted autoplay></video>
+                        <canvas id="output-canvas"></canvas>
+                        <div id="loading-overlay" class="overlay">
+                            <div class="spinner"></div>
+                            <p id="loading-text">カメラを起動中...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="debug-container" class="hidden">
+                        <p class="debug-title">【デバッグ映像】白＝変化 / <span style="color: #ef4444;">赤＝ボールと判定</span></p>
+                        <canvas id="debug-canvas"></canvas>
                     </div>
                 </div>
             </div>
 
-            <div class="glass-panel visual-area">
-                <div class="media-container">
-                    <video id="video-player" playsinline muted autoplay></video>
-                    <canvas id="output-canvas"></canvas>
-                    <div id="loading-overlay" class="overlay">
-                        <div class="spinner"></div>
-                        <p id="loading-text">OpenCVを読み込み中...</p>
+            <!-- Right Side: Controls & Results -->
+            <div class="right-column">
+                <div class="top-controls">
+                    <button id="btn-settings" class="icon-btn-large" title="設定"><i class="fas fa-cog"></i></button>
+                    <button id="btn-info" class="icon-btn-large" title="情報"><i class="fas fa-info-circle"></i></button>
+                    <button id="btn-fullscreen" class="icon-btn-large" title="全画面表示"><i class="fas fa-expand"></i></button>
+                </div>
+
+                <div class="glass-panel results-panel">
+                    <div class="result-box primary-result">
+                        <span class="label">推定転がり距離</span>
+                        <div class="value-wrapper">
+                            <span id="res-distance" class="value">--</span>
+                            <span class="unit">m</span>
+                        </div>
+                    </div>
+                    <div class="secondary-results">
+                        <div class="result-box">
+                            <span class="label">初速</span>
+                            <span class="value-wrapper"><span id="res-velocity" class="value small">--</span> <span class="unit small">m/s</span></span>
+                        </div>
+                        <div class="result-box">
+                            <span class="label">状態</span>
+                            <span id="res-status" class="value small status-badge">待機中</span>
+                        </div>
                     </div>
                 </div>
-                
+
+                <!-- Film Strip: tracking frame thumbnails -->
+                <div id="film-strip-panel" class="glass-panel film-strip-panel hidden">
+                    <div class="film-strip-header">
+                        <i class="fas fa-film"></i> トラッキング記録
+                        <span id="film-frame-count" class="film-count-badge">0コマ</span>
+                    </div>
+                    <div id="film-strip" class="film-strip"></div>
+                </div>
+
+                <!-- Lightbox for full-size frame preview -->
+                <div id="frame-lightbox" class="frame-lightbox hidden">
+                    <div class="lightbox-inner">
+                        <button id="lightbox-close" class="icon-btn" style="position:absolute;top:8px;right:8px;z-index:1;"><i class="fas fa-times"></i></button>
+                        <canvas id="lightbox-canvas"></canvas>
+                        <div id="lightbox-info" class="lightbox-info"></div>
+                    </div>
+                </div>
+
                 <div class="action-buttons">
                     <button id="btn-start" class="action-btn primary">
-                        <i class="fas fa-camera"></i> カメラを起動して開始
+                        <i class="fas fa-camera"></i> 起動
+                    </button>
+                    <button id="btn-recalibrate" class="action-btn secondary hidden">
+                        <i class="fas fa-redo"></i> 背景を再キャリブレーション
                     </button>
                     <button id="btn-stop" class="action-btn danger hidden">
                         <i class="fas fa-stop"></i> 停止
                     </button>
                 </div>
             </div>
-
-            <div class="glass-panel results-panel">
-                <div class="result-box primary-result">
-                    <span class="label">推定転がり距離</span>
-                    <div class="value-wrapper">
-                        <span id="res-distance" class="value">--</span>
-                        <span class="unit">m</span>
-                    </div>
-                </div>
-                <div class="secondary-results">
-                    <div class="result-box">
-                        <span class="label">初速</span>
-                        <span id="res-velocity" class="value small">-- m/s</span>
-                    </div>
-                    <div class="result-box">
-                        <span class="label">状態</span>
-                        <span id="res-status" class="value small status-badge">待機中</span>
-                    </div>
-                </div>
-            </div>
         </main>
     </div>
 
-    <!-- Scripts -->
-    <script async src="https://docs.opencv.org/4.8.0/opencv.js" id="opencv-script"></script>
+    <script src="tracker-worker.js" type="javascript/worker" id="worker-script" style="display:none;"></script>
     <script src="tracker.js"></script>
     <script src="app.js"></script>
 </body>
