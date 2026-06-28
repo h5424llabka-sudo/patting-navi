@@ -260,14 +260,14 @@ class PuttTracker {
             const wpx = predX * this.workScale;
             const wpy = predY * this.workScale;
 
-            // TRACKING中は予測位置を中心に、パターを包含しない突っ込んだROI
-            // READY中はボールを囲む小さいROI
-            const roiMult = state === 'TRACKING' ? 4.0 : 1.2;
-            const wR = this.ballRadius * this.workScale * roiMult;
+            // TRACKING中は予測位置を中心に、READY中は現在位置を中心に探索
+            // ROI半径は十分に大きく取る（searchRadiusを使用）
+            const wR = this.searchRadius * this.workScale;
 
-            // Y軸ロック: 予測位置を中心に紭わせる（予測位置もROIの中に入る）
+            // Y軸ロック: パット開始時のY座標（this.baselineY）を厳格に守る
+            // これにより縦ブレや影のノイズを完全にシャットアウト
             const baselineY = state === 'TRACKING' && this.baselineY != null
-                ? predY * this.workScale  // 予測位置のYを使う
+                ? this.baselineY * this.workScale
                 : -1;
 
             this.worker.postMessage({
