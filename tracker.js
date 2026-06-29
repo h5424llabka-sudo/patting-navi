@@ -278,6 +278,7 @@ class PuttTracker {
                     debugMode: !!this.debugCtx,
                     isTracking: state === 'TRACKING',
                     baselineY,
+                    velX: this.velX,
                     maxX: -1  // maxX制約は廃止。予測位置中心のROIでパターを自然に除外
                 }
             }, [pixels.buffer]);
@@ -446,32 +447,52 @@ class PuttTracker {
             const maxExpectedR = this.ballRadius * 2.5;
 
             if (rGlobal >= this.minBallRadius && rGlobal < maxExpectedR) {
-                // --- Velocity update (exponential moving average) ---
-                const prevLen = this.positions.length;
-                let frameSpeed = 0;
-                if (prevLen >= 1) {
-                    const pp  = this.positions[prevLen - 1];
-                    const dt  = (now - this.timestamps[prevLen - 1]) / 1000;
-                    if (dt > 0 && dt < 0.2) { // ignore stale results
-                        const rawVx = (gx - pp.x) / (dt * 1000); // px/ms
-                        const rawVy = (gy - pp.y) / (dt * 1000);
-                        // EMA: blend toward new measurement
-                        const alpha = 0.6;
-                        this.velX = this.velX * (1 - alpha) + rawVx * alpha;
-                        this.velY = this.velY * (1 - alpha) + rawVy * alpha;
-                        frameSpeed = (Math.hypot(gx - pp.x, gy - pp.y) / this.pixelsPerCm / 100) / dt;
+                const dx = gx - this.ballCenter.x;
+                const dy = gy - this.ballCenter.y;
+                const moved = Math.hypot(dx, dy);
+
+                // 逆方向の動き（誤検出）をブロック
+                let isBackward = false;
+                if (this.positions.length >= 3) {
+                    const speed = Math.hypot(this.velX, this.velY);
+                    if (speed > 0.05 && moved > this.ballRadius * 0.5) {
+                        const dot = dx * this.velX + dy * this.velY;
+                        if (dot < 0) {
+                            isBackward = true; // 進行方向と逆向きに大きく動いた場合はノイズとみなす
+                        }
                     }
                 }
 
-                this.ballCenter = { x: gx, y: gy };
-                this.positions.push({ x: gx, y: gy });
-                this.timestamps.push(now);
-                this.lostFrames = 0;
-                this.searchRadius = Math.max(this.searchRadius, rGlobal * 6);
+                if (!isBackward) {
+                    // --- Velocity update (exponential moving average) ---
+                    const prevLen = this.positions.length;
+                    let frameSpeed = 0;
+                    if (prevLen >= 1) {
+                        const pp  = this.positions[prevLen - 1];
+                        const dt  = (now - this.timestamps[prevLen - 1]) / 1000;
+                        if (dt > 0 && dt < 0.2) { // ignore stale results
+                            const rawVx = (gx - pp.x) / (dt * 1000); // px/ms
+                            const rawVy = (gy - pp.y) / (dt * 1000);
+                            // EMA: blend toward new measurement
+                            const alpha = 0.6;
+                            this.velX = this.velX * (1 - alpha) + rawVx * alpha;
+                            this.velY = this.velY * (1 - alpha) + rawVy * alpha;
+                            frameSpeed = (Math.hypot(gx - pp.x, gy - pp.y) / this.pixelsPerCm / 100) / dt;
+                        }
+                    }
 
-                // Capture thumbnail of this frame (max 12 frames total)
-                if (this.capturedFrames.length < 12) {
-                    this._captureThumb(gx, gy, rGlobal, frameSpeed, this.positions.length - 1);
+                    this.ballCenter = { x: gx, y: gy };
+                    this.positions.push({ x: gx, y: gy });
+                    this.timestamps.push(now);
+                    this.lostFrames = 0;
+                    this.searchRadius = Math.max(this.searchRadius, rGlobal * 6);
+
+                    // Capture thumbnail of this frame (max 12 frames total)
+                    if (this.capturedFrames.length < 12) {
+                        this._captureThumb(gx, gy, rGlobal, frameSpeed, this.positions.length - 1);
+                    }
+                } else {
+                    this.lostFrames++;
                 }
             } else {
                 this.lostFrames++;
@@ -618,17 +639,29 @@ class PuttTracker {
             return;
         }
 
-        let maxV = 0;
-        const win = Math.max(1, Math.min(3, Math.floor(this.positions.length / 2)));
-        for (let i = win; i < this.positions.length; i++) {
-            const p1 = this.positions[i - win], p2 = this.positions[i];
-            const dt = (this.timestamps[i] - this.timestamps[i - win]) / 1000;
-            if (dt > 0) {
-                const px = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-                const v  = (px / this.pixelsPerCm / 100) / dt;
-                if (v > maxV) maxV = v;
+        // 改善案2: 線形回帰（最小二乗法）による初速（V_peak）の堅牢な算出
+        // パット直後の10〜15フレーム程度の「時間(t)」と「移動距離(d)」の関係から
+        // 一次関数 d = V * t の傾き V を求め、ノイズ（瞬間的な外れ値）を平滑化する。
+        let sum_td = 0;
+        let sum_tt = 0;
+        const p0 = this.positions[0];
+        const t0 = this.timestamps[0];
+        
+        // 初速を測るため、最初の最大15フレーム（約0.25秒）を使用する
+        const N = Math.min(this.positions.length, 15);
+        for (let i = 1; i < N; i++) {
+            const p = this.positions[i];
+            const t = (this.timestamps[i] - t0) / 1000; // 経過時間 (秒)
+            if (t > 0) {
+                const px = Math.hypot(p.x - p0.x, p.y - p0.y);
+                const d = px / (this.pixelsPerCm * 100); // 距離 (m)
+                sum_td += t * d;
+                sum_tt += t * t;
             }
         }
+        
+        // 最小二乗法による傾き（速度 m/s）
+        let maxV = sum_tt > 0 ? sum_td / sum_tt : 0;
 
         if (maxV < 0.05) {
             this.onStatusUpdate(`エラー: 速度が低すぎます (${maxV.toFixed(3)}m/s)`, '--', '--', '#ef4444');

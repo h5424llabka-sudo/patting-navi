@@ -67,14 +67,14 @@ self.onmessage = (e) => {
             self.postMessage({ type: 'detect_result', result: null });
             return;
         }
-        const { pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, isTracking, baselineY, maxX } = data;
-        const result = detectFG(pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, isTracking, baselineY, maxX);
+        const { pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, isTracking, baselineY, maxX, velX } = data;
+        const result = detectFG(pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, isTracking, baselineY, maxX, velX);
         self.postMessage({ type: 'detect_result', result }, debugMode && result.debugPixels ? [result.debugPixels.buffer] : []);
         return;
     }
 };
 
-function detectFG(pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, isTracking, baselineY, maxX) {
+function detectFG(pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, isTracking, baselineY, maxX, velX) {
     const d   = pixels;
     const bg  = bgModel;
     const W   = params.workW, H = params.workH;
@@ -177,24 +177,34 @@ function detectFG(pixels, roiCx, roiCy, roiR, targetColor, debugMode, updateBg, 
         return { tooNoisy: true, globalCnt: globalFg, blobCnt: 0, blobCx: -1, blobCy: -1, debugPixels: dbg };
     }
 
-    // 「最大」ではなく「条件を満たす最左端」を探す (Leading Edge)
+    // 進行方向の最前線（Leading Edge）を探す
     let bestCell = -1;
-    let minXForBest = 999999;
+    let bestEdgeX = (velX !== undefined && velX > 0) ? -999999 : 999999;
     let bestCount = 0;
 
     for (let i = 0; i < GC * GR; i++) {
         if (gridCnt[i] < params.MIN_CELL_PX) continue;
 
         const cx = gridSX[i] / gridCnt[i];
-        // トラッキング中なら最も左（Xが小さい）ものを優先
-        if (isTracking) {
-            if (cx < minXForBest) {
-                minXForBest = cx;
-                bestCell = i;
-                bestCount = gridCnt[i];
+        // トラッキング中なら進行方向の先端を優先
+        if (isTracking && velX !== undefined && Math.abs(velX) > 0.01) {
+            if (velX > 0) {
+                // 右に移動している場合は、最も右（Xが大きい）ものを優先
+                if (cx > bestEdgeX) {
+                    bestEdgeX = cx;
+                    bestCell = i;
+                    bestCount = gridCnt[i];
+                }
+            } else {
+                // 左に移動している場合は、最も左（Xが小さい）ものを優先
+                if (cx < bestEdgeX) {
+                    bestEdgeX = cx;
+                    bestCell = i;
+                    bestCount = gridCnt[i];
+                }
             }
         } else {
-            // 待機中（ボール認識前）は今まで通り一番大きい塊を探す
+            // 待機中（ボール認識前）や速度不明時は一番大きい塊を探す
             if (gridCnt[i] > bestCount) {
                 bestCount = gridCnt[i];
                 bestCell = i;

@@ -163,47 +163,49 @@
 
             <!-- Right Side: Controls & Results -->
             <div class="right-column">
-                <div class="top-controls">
-                    <button id="btn-settings" class="icon-btn-large" title="設定"><i class="fas fa-cog"></i></button>
-                    <button id="btn-info" class="icon-btn-large" title="情報"><i class="fas fa-info-circle"></i></button>
-                    <button id="btn-fullscreen" class="icon-btn-large" title="全画面表示"><i class="fas fa-expand"></i></button>
-                </div>
+                <div class="right-content">
+                    <div class="top-controls">
+                        <button id="btn-settings" class="icon-btn-large" title="設定"><i class="fas fa-cog"></i></button>
+                        <button id="btn-info" class="icon-btn-large" title="情報"><i class="fas fa-info-circle"></i></button>
+                        <button id="btn-fullscreen" class="icon-btn-large" title="全画面表示"><i class="fas fa-expand"></i></button>
+                    </div>
 
-                <div class="glass-panel results-panel">
-                    <div class="result-box primary-result">
-                        <span class="label">推定転がり距離</span>
-                        <div class="value-wrapper">
-                            <span id="res-distance" class="value">--</span>
-                            <span class="unit">m</span>
+                    <div class="glass-panel results-panel">
+                        <div class="result-box primary-result">
+                            <span class="label">推定転がり距離</span>
+                            <div class="value-wrapper">
+                                <span id="res-distance" class="value">--</span>
+                                <span class="unit">m</span>
+                            </div>
+                        </div>
+                        <div class="secondary-results">
+                            <div class="result-box">
+                                <span class="label">初速</span>
+                                <span class="value-wrapper"><span id="res-velocity" class="value small">--</span> <span class="unit small">m/s</span></span>
+                            </div>
+                            <div class="result-box">
+                                <span class="label">状態</span>
+                                <span id="res-status" class="value small status-badge">待機中</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="secondary-results">
-                        <div class="result-box">
-                            <span class="label">初速</span>
-                            <span class="value-wrapper"><span id="res-velocity" class="value small">--</span> <span class="unit small">m/s</span></span>
-                        </div>
-                        <div class="result-box">
-                            <span class="label">状態</span>
-                            <span id="res-status" class="value small status-badge">待機中</span>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Film Strip: tracking frame thumbnails -->
-                <div id="film-strip-panel" class="glass-panel film-strip-panel hidden">
-                    <div class="film-strip-header">
-                        <i class="fas fa-film"></i> トラッキング記録
-                        <span id="film-frame-count" class="film-count-badge">0コマ</span>
+                    <!-- Film Strip: tracking frame thumbnails -->
+                    <div id="film-strip-panel" class="glass-panel film-strip-panel hidden">
+                        <div class="film-strip-header">
+                            <i class="fas fa-film"></i> トラッキング記録
+                            <span id="film-frame-count" class="film-count-badge">0コマ</span>
+                        </div>
+                        <div id="film-strip" class="film-strip"></div>
                     </div>
-                    <div id="film-strip" class="film-strip"></div>
-                </div>
 
-                <!-- Lightbox for full-size frame preview -->
-                <div id="frame-lightbox" class="frame-lightbox hidden">
-                    <div class="lightbox-inner">
-                        <button id="lightbox-close" class="icon-btn" style="position:absolute;top:8px;right:8px;z-index:1;"><i class="fas fa-times"></i></button>
-                        <canvas id="lightbox-canvas"></canvas>
-                        <div id="lightbox-info" class="lightbox-info"></div>
+                    <!-- Lightbox for full-size frame preview -->
+                    <div id="frame-lightbox" class="frame-lightbox hidden">
+                        <div class="lightbox-inner">
+                            <button id="lightbox-close" class="icon-btn" style="position:absolute;top:8px;right:8px;z-index:1;"><i class="fas fa-times"></i></button>
+                            <canvas id="lightbox-canvas"></canvas>
+                            <div id="lightbox-info" class="lightbox-info"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -212,7 +214,7 @@
                         <i class="fas fa-camera"></i> 起動
                     </button>
                     <button id="btn-recalibrate" class="action-btn secondary hidden">
-                        <i class="fas fa-redo"></i> 背景を再キャリブレーション
+                        <i class="fas fa-redo"></i> 背景リセット
                     </button>
                     <button id="btn-stop" class="action-btn danger hidden">
                         <i class="fas fa-stop"></i> 停止
